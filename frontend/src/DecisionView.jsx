@@ -12,7 +12,7 @@ function DayStrip({ days, day, setDay, byDay }) {
       <div className="strip-nav">
         <button disabled={i <= 0} onClick={() => setDay(days[i - 1])}>← Previous day</button>
         <button disabled={i >= days.length - 1} onClick={() => setDay(days[i + 1])}>Next day →</button>
-        <span className="muted small">Darker = bigger forecast miss that day. Click a day to open it.</span>
+        <span className="muted small">Darker day = the forecast was further off that day.</span>
       </div>
       <div className="days" role="group" aria-label="Pick a delivery day">
         {days.map((d) => (
@@ -60,8 +60,8 @@ export default function DecisionView({ meta, cutoff, accuracy, day, setDay }) {
 
   return (
     <>
-      <DayStrip days={meta.days} day={day} setDay={setDay} byDay={accuracy?.by_day} />
-      <section className="rail">
+      <section className="card"><h2 className="h">1 · Pick a delivery day</h2><DayStrip days={meta.days} day={day} setDay={setDay} byDay={accuracy?.by_day} /></section>
+      <section className="card rail"><h2 className="h" style={{width:"100%"}}>2 · Optional: compare with your demand</h2>
         <label>
           Your expected demand (MW, optional)
           <input type="number" min="0" placeholder="e.g. 18000" value={demand} onChange={(e) => setDemand(e.target.value)} />
@@ -76,12 +76,9 @@ export default function DecisionView({ meta, cutoff, accuracy, day, setDay }) {
           <h2 className="lede">
             For {longDay(day)}, the latest wind forecast you could have used was published {stamp(s.latest_publish)}.
           </h2>
-          <p className="muted">
-            Wind averages {mw(s.mean_forecast)} across the day, peaking at {mw(s.peak_forecast)} and dipping to {mw(s.min_forecast)}.
-            {p90 != null && ` Treat each half-hour as accurate to about ±${mw(p90)} (9 in 10 January half-hours).`}
-          </p>
+          {p90 != null && <p className="callout">Plan for each half-hour to land within <b>±{mw(p90)}</b> of this forecast, 9 times out of 10 (based on how far January forecasts were off).</p>}
 
-          <div className="chart tall">
+          <div className="card"><h2 className="h">3 · Forecast vs what actually happened</h2><div className="chart tall">
             <ResponsiveContainer>
               <ComposedChart data={rows} margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
                 <CartesianGrid stroke="var(--grid)" vertical={false} />
@@ -95,11 +92,11 @@ export default function DecisionView({ meta, cutoff, accuracy, day, setDay }) {
                 {demandMw != null && <Line dataKey="demand" name="Your demand" stroke="var(--err)" strokeWidth={1.5} dot={false} />}
               </ComposedChart>
             </ResponsiveContainer>
-          </div>
+          </div></div>
 
-          <dl className="facts">
+          <dl className="tiles">
             <div><dt>Forecast lead time</dt><dd>{accuracy?.decision_horizon_h ? `${Math.round(accuracy.decision_horizon_h.min)}–${Math.round(accuracy.decision_horizon_h.max)} h ahead` : "–"}</dd></div>
-            <div><dt>Forecast published</dt><dd>{clock(s.earliest_publish)}–{clock(s.latest_publish)} (UK)</dd></div>
+            <div><dt>Average wind</dt><dd>{mw(s.mean_forecast)}</dd></div><div><dt>Peak</dt><dd>{mw(s.peak_forecast)}</dd></div><div><dt>Lowest</dt><dd>{mw(s.min_forecast)}</dd></div>
             <div><dt>This day's average miss</dt><dd>{mw(s.day_metrics.mae)}</dd></div>
             {toBuy != null && <div><dt>Buy beyond wind (average)</dt><dd>{mw(toBuy)}</dd></div>}
             {toBuy != null && accuracy && <div><dt>Suggested cover (19 in 20)</dt><dd>{mw(toBuy + over95)}</dd></div>}

@@ -5,7 +5,7 @@ import { mw, num, dayLabel } from "./format.js";
 
 function Chart({ title, note, children }) {
   return (
-    <figure>
+    <figure className="card">
       <figcaption><strong>{title}</strong><span className="muted"> {note}</span></figcaption>
       <div className="chart"><ResponsiveContainer>{children}</ResponsiveContainer></div>
     </figure>
@@ -31,7 +31,7 @@ export default function AccuracyView({ accuracy }) {
         {s.bias > 0 ? ", so relying on it alone would have left you slightly short." : ", so you would have bought a little more than needed."}
       </p>
 
-      <dl className="facts">
+      <dl className="tiles">
         <div><dt>Average miss (MAE)</dt><dd>{mw(s.mae)}{s.nmae_pct != null && ` · ${s.nmae_pct.toFixed(0)}% of mean wind`}</dd></div>
         <div><dt>Typical large miss (RMSE)</dt><dd>{mw(s.rmse)}</dd></div>
         <div><dt>Median miss</dt><dd>{mw(s.p50_abs)}</dd></div>
@@ -40,6 +40,7 @@ export default function AccuracyView({ accuracy }) {
       </dl>
       <p className="muted small">Error = forecast minus actual. Positive means the forecast was too high.</p>
 
+      <h2 className="h" style={{marginTop:28}}>The detail</h2>
       <Chart title="Error grows with lead time" note="All forecasts for January targets, grouped by hours between publication and delivery.">
         <BarChart data={horizon}><CartesianGrid stroke="var(--grid)" vertical={false} />
           <XAxis dataKey="label" /><YAxis tickFormatter={k} width={44} />
@@ -77,6 +78,14 @@ export default function AccuracyView({ accuracy }) {
           <Bar dataKey="count" name="Half-hours">{accuracy.error_hist.map((b) => <Cell key={b.lo} fill={b.lo >= 0 ? "var(--warn)" : "var(--forecast)"} />)}</Bar>
         </BarChart>
       </Chart>
+
+      <details className="card gloss"><summary>What do these terms mean?</summary>
+        <p><b>Average miss (MAE):</b> how many MW the forecast was off by, on average.</p>
+        <p><b>Typical large miss (RMSE):</b> like the average miss, but big misses count extra.</p>
+        <p><b>9 in 10 (P90):</b> in 90% of half-hours the miss was no bigger than this.</p>
+        <p><b>Bias:</b> positive means wind was usually forecast too high, so you would under-buy.</p>
+        <p><b>Cutoff:</b> the time on the day before delivery when you must commit to buying.</p>
+      </details>
 
       {sens && sens.length > 0 && (
         <Chart title="What if you decide earlier?" note="January accuracy using only forecasts published by each cutoff time on the day before.">

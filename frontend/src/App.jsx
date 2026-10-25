@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { getMeta, getDecision, getAccuracy } from "./api.js";
+import { getMeta, getAccuracy } from "./api.js";
 import DecisionView from "./DecisionView.jsx";
 import AccuracyView from "./AccuracyView.jsx";
+
+const TABS = [["decision", "Decision time", "What to expect for a delivery day"], ["accuracy", "Accuracy", "How wrong forecasts have been"]];
 
 export default function App() {
   const [meta, setMeta] = useState(null);
@@ -28,38 +30,38 @@ export default function App() {
     getAccuracy(cutoff).then(setAccuracy).catch((e) => setError(e.message));
   }, [meta, cutoff]);
 
-  if (error) return <main className="shell"><p className="error">{error}</p></main>;
-  if (!meta) return <main className="shell"><p className="muted">Loading data…</p></main>;
+  if (error) return <main className="solo"><p className="error">{error}</p></main>;
+  if (!meta) return <main className="solo"><p className="muted">Loading data…</p></main>;
 
   return (
-    <main className="shell">
-      <header className="top">
-        <h1>Windcast</h1>
-        <p className="muted">GB wind forecasts for the day-ahead buying decision · January 2026</p>
-        <nav role="tablist">
-          {[["decision", "Forecast at decision time"], ["accuracy", "How accurate is it?"]].map(([id, label]) => (
-            <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>
+    <div className="app">
+      <aside className="side">
+        <div>
+          <h1 className="brand">Windcast</h1>
+          <p className="tag">GB wind forecasts for day-ahead buying · January 2026</p>
+        </div>
+        <nav aria-label="Sections">
+          {TABS.map(([id, label, hint]) => (
+            <button key={id} aria-current={tab === id ? "page" : undefined} onClick={() => setTab(id)}>
+              <span>{label}</span><small>{hint}</small>
+            </button>
           ))}
         </nav>
-      </header>
-
-      {meta.source === "synthetic" && (
-        <p className="banner">Showing synthetic demo data, not Elexon data. Run the fetch script to load real figures.</p>
-      )}
-
-      <section className="rail">
-        <label>
-          Decision cutoff (UK time, day before delivery)
-          <input type="time" value={cutoff} onChange={(e) => e.target.value && setCutoff(e.target.value)} />
-        </label>
-        <p className="muted small">
-          Only forecasts published at or before this time count. Day-ahead gate closes about 09:20–09:50, so 09:00 is a safe default.
-        </p>
-      </section>
-
-      {tab === "decision"
-        ? <DecisionView meta={meta} cutoff={cutoff} accuracy={accuracy} day={day} setDay={setDay} />
-        : <AccuracyView accuracy={accuracy} />}
-    </main>
+        <div className="cutoff">
+          <label>Decision cutoff
+            <input type="time" value={cutoff} onChange={(e) => e.target.value && setCutoff(e.target.value)} />
+          </label>
+          <p>UK time, the day before delivery. Only forecasts published by then count. The market closes around 09:20–09:50, so 09:00 is a safe choice.</p>
+          {cutoff !== meta.default_cutoff && <button className="link" onClick={() => setCutoff(meta.default_cutoff)}>Reset to {meta.default_cutoff}</button>}
+        </div>
+        <p className="src">Source: Elexon, wind actuals (FUELHH) and forecasts (WINDFOR).</p>
+      </aside>
+      <main>
+        {meta.source === "synthetic" && <p className="banner">Showing synthetic demo data, not Elexon data.</p>}
+        {tab === "decision"
+          ? <DecisionView meta={meta} cutoff={cutoff} accuracy={accuracy} day={day} setDay={setDay} />
+          : <AccuracyView accuracy={accuracy} />}
+      </main>
+    </div>
   );
 }
