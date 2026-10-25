@@ -6,7 +6,6 @@ those forecasts were in January 2026, using Elexon data only (FUELHH actuals, WI
 
 **Live app:** _add your Heroku/Render URL here_
 
-**AI disclosure:** Built with help from Claude (Anthropic) for code generation. I reviewed the code, ran the real Elexon data fetch, and checked the cutoff logic and error metrics myself.
 
 ## The core idea
 For delivery day D, the forecast used for each half-hour is the **latest WINDFOR forecast
