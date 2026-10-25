@@ -1,0 +1,31 @@
+:root {
+  --paper: #eef2f4; --ink: #10202b; --muted: #55656f; --grid: #d5dde2;
+  --forecast: #1b5faa; --band: #bcd6ee; --band-strong: #7fa9d3; --warn: #b87400; --err: #a3281b;
+  font-family: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink); background: var(--paper); font-variant-numeric: tabular-nums;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --paper: #0f1a22; --ink: #e6eef3; --muted: #93a5b1; --grid: #263641;
+    --forecast: #6fb0f0; --band: #1f3a54; --band-strong: #3f78ad; --warn: #e0a540; --err: #ff8a7a; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); }
+.shell { max-width: 1040px; margin: 0 auto; padding: 32px 20px 64px; }
+h1 { margin: 0; font-size: 2.1rem; letter-spacing: -0.02em; }
+.lede { font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1.2; max-width: 30ch; letter-spacing: -0.01em; margin: 28px 0 10px; }
+.muted { color: var(--muted); max-width: 70ch; line-height: 1.5; }
+.small { font-size: 0.85rem; }
+.error { color: var(--err); font-weight: 500; }
+.banner { background: var(--band); padding: 10px 14px; border-left: 4px solid var(--warn); }
+.top nav { display: flex; gap: 4px; margin-top: 20px; border-bottom: 2px solid var(--grid); }
+.top button { font: inherit; font-weight: 500; background: none; border: 0; padding: 10px 14px; cursor: pointer; color: var(--muted);
+  border-bottom: 3px solid transparent; margin-bottom: -2px; }
+.top button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--forecast); }
+.rail { display: flex; flex-wrap: wrap; gap: 20px 32px; margin-top: 20px; align-items: flex-start; }
+label { display: grid; gap: 6px; font-size: 0.85rem; color: var(--muted); max-width: 300px; }
+input, select { font: inherit; padding: 8px 10px; border: 1px solid var(--grid); background: transparent; color: var(--ink); border-radius: 4px; min-width: 200px; }
+:focus-visible { outline: 3px solid var(--forecast); outline-offset: 2px; }
+.chart { height: 260px; margin: 14px 0 6px; } .chart.tall { height: 380px; }
+figure { margin: 36px 0 0; } figcaption { max-width: 70ch; }
+.facts { display: flex; flex-wrap: wrap; gap: 20px 40px; margin: 24px 0 8px; }
+.facts dt { font-size: 0.82rem; color: var(--muted); } .facts dd { margin: 2px 0 0; font-size: 1.15rem; font-weight: 700; }
