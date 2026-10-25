@@ -11,3 +11,4 @@ async function get(path, params = {}) {
 export const getMeta = () => get("meta");
 export const getDecision = (day, cutoff) => get("decision", { day, cutoff });
 export const getAccuracy = (cutoff) => get("accuracy", { cutoff });
+export const getSensitivity = () => get("sensitivity");

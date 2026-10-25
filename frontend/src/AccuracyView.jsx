@@ -1,4 +1,6 @@
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
+import { useEffect, useState } from "react";
+import { getSensitivity } from "./api.js";
+import { BarChart, Bar, Cell, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
 import { mw, num, dayLabel } from "./format.js";
 
 function Chart({ title, note, children }) {
@@ -13,6 +15,8 @@ function Chart({ title, note, children }) {
 const k = (v) => `${(v / 1000).toFixed(1)}k`;
 
 export default function AccuracyView({ accuracy }) {
+  const [sens, setSens] = useState(null);
+  useEffect(() => { getSensitivity().then(setSens).catch(() => setSens([])); }, []);
   if (!accuracy) return <p className="muted">Calculating…</p>;
   const { summary: s, by_day, by_hour, by_horizon } = accuracy;
   const direction = s.bias > 0 ? "over-forecast" : "under-forecast";
@@ -64,6 +68,26 @@ export default function AccuracyView({ accuracy }) {
           <Line dataKey="bias" name="Bias" stroke="var(--warn)" strokeWidth={2} dot={false} />
         </LineChart>
       </Chart>
+
+      <Chart title="How wrong, and in which direction" note="Number of January half-hours in each error band. Orange = over-forecast (you would be short).">
+        <BarChart data={accuracy.error_hist}><CartesianGrid stroke="var(--grid)" vertical={false} />
+          <XAxis dataKey="lo" tickFormatter={k} /><YAxis width={44} />
+          <Tooltip formatter={(v) => `${num(v)} half-hours`} labelFormatter={(lo) => `${mw(lo)} to ${mw(lo + 1000)}`} />
+          <ReferenceLine x={0} stroke="var(--ink)" />
+          <Bar dataKey="count" name="Half-hours">{accuracy.error_hist.map((b) => <Cell key={b.lo} fill={b.lo >= 0 ? "var(--warn)" : "var(--forecast)"} />)}</Bar>
+        </BarChart>
+      </Chart>
+
+      {sens && sens.length > 0 && (
+        <Chart title="What if you decide earlier?" note="January accuracy using only forecasts published by each cutoff time on the day before.">
+          <LineChart data={sens}><CartesianGrid stroke="var(--grid)" vertical={false} />
+            <XAxis dataKey="cutoff" /><YAxis tickFormatter={k} width={44} />
+            <Tooltip formatter={(v) => mw(v)} labelFormatter={(c) => `Cutoff ${c} UK time`} /><Legend />
+            <Line dataKey="p90_abs" name="9-in-10 miss (P90)" stroke="var(--warn)" strokeWidth={2} />
+            <Line dataKey="mae" name="Average miss" stroke="var(--forecast)" strokeWidth={2} />
+          </LineChart>
+        </Chart>
+      )}
     </>
   );
 }

@@ -29,3 +29,8 @@ input, select { font: inherit; padding: 8px 10px; border: 1px solid var(--grid);
 figure { margin: 36px 0 0; } figcaption { max-width: 70ch; }
 .facts { display: flex; flex-wrap: wrap; gap: 20px 40px; margin: 24px 0 8px; }
 .facts dt { font-size: 0.82rem; color: var(--muted); } .facts dd { margin: 2px 0 0; font-size: 1.15rem; font-weight: 700; }
+.strip { margin-top: 20px; } .strip-nav { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.strip button, .tool { font: inherit; font-size: 0.85rem; padding: 6px 10px; border: 1px solid var(--grid); background: transparent; color: var(--ink); border-radius: 4px; cursor: pointer; }
+.strip button:disabled { opacity: 0.4; cursor: default; }
+.days { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 4px; margin-top: 10px; max-width: 760px; }
+.days button { padding: 8px 0; } .days button[aria-pressed="true"] { outline: 3px solid var(--forecast); font-weight: 700; }

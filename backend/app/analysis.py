@@ -117,3 +117,13 @@ def horizon_table(fc_all: pd.DataFrame, actuals: pd.DataFrame, width_h: int = 6)
     for r in rows:
         r["hi"] = r["lo"] + width_h
     return rows
+
+
+def error_histogram(df: pd.DataFrame, width: int = 1000) -> list[dict]:
+    """Counts of half-hours per error bin (MW), so the shape and skew of the error is visible."""
+    e = df["error"].dropna()
+    lo = int(np.floor(e.min() / width) * width)
+    hi = int(np.ceil(e.max() / width) * width) + width
+    edges = np.arange(lo, hi + 1, width)
+    counts, _ = np.histogram(e, bins=edges)
+    return [{"lo": int(a), "hi": int(a + width), "count": int(c)} for a, c in zip(edges[:-1], counts)]

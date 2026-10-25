@@ -57,3 +57,11 @@ def test_horizon_bins_grow_with_lead_time():
     ])
     rows = {r["lo"]: r for r in an.horizon_table(fc, actuals)}
     assert rows[0]["mae"] == 100 and rows[24]["mae"] == 500
+
+
+def test_error_histogram_counts_every_half_hour():
+    import pandas as pd
+    from app import analysis as an
+    h = an.error_histogram(pd.DataFrame({"error": [-1500.0, -200.0, 0.0, 300.0, 2600.0]}), width=1000)
+    assert sum(b["count"] for b in h) == 5
+    assert h[0]["lo"] == -2000

@@ -3,8 +3,41 @@ import { ComposedChart, Line, Area, XAxis, YAxis, Tooltip, CartesianGrid, Respon
 import { getDecision } from "./api.js";
 import { mw, clock, stamp, longDay } from "./format.js";
 
-export default function DecisionView({ meta, cutoff, accuracy }) {
-  const [day, setDay] = useState("2026-01-15");
+function DayStrip({ days, day, setDay, byDay }) {
+  const mae = Object.fromEntries((byDay ?? []).map((r) => [r.day, r.mae]));
+  const max = Math.max(1, ...Object.values(mae));
+  const i = days.indexOf(day);
+  return (
+    <div className="strip">
+      <div className="strip-nav">
+        <button disabled={i <= 0} onClick={() => setDay(days[i - 1])}>← Previous day</button>
+        <button disabled={i >= days.length - 1} onClick={() => setDay(days[i + 1])}>Next day →</button>
+        <span className="muted small">Darker = bigger forecast miss that day. Click a day to open it.</span>
+      </div>
+      <div className="days" role="group" aria-label="Pick a delivery day">
+        {days.map((d) => (
+          <button key={d} aria-pressed={d === day} onClick={() => setDay(d)}
+            title={`${longDay(d)}${mae[d] != null ? ` · average miss ${mw(mae[d])}` : ""}`}
+            style={mae[d] != null ? { background: `color-mix(in srgb, var(--warn) ${Math.round(15 + 70 * mae[d] / max)}%, transparent)` } : undefined}>
+            {Number(d.slice(8))}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function downloadCsv(data, day, cutoff) {
+  const head = "startTime_utc,publishTime_utc,lead_h,forecast_mw,actual_mw,error_mw";
+  const lines = data.points.map((p) => [p.startTime, p.publishTime, p.horizon_h?.toFixed(2) ?? "", p.forecast,
+    p.actual ?? "", p.actual != null ? p.forecast - p.actual : ""].join(","));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([[head, ...lines].join("\n")], { type: "text/csv" }));
+  a.download = `windcast_${day}_cutoff${cutoff.replace(":", "")}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+export default function DecisionView({ meta, cutoff, accuracy, day, setDay }) {
   const [demand, setDemand] = useState("");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -15,30 +48,25 @@ export default function DecisionView({ meta, cutoff, accuracy }) {
   }, [day, cutoff]);
 
   const p90 = accuracy?.summary?.p90_abs;
+  const over95 = Math.max(0, accuracy?.summary?.p95_err ?? 0);  // wind falling short of forecast: the risk when buying
+  const demandMw = demand ? Number(demand) : null;
   const rows = useMemo(() => (data?.points ?? []).map((p) => ({
-    t: p.startTime,
-    forecast: p.forecast,
-    actual: p.actual,
+    t: p.startTime, forecast: p.forecast, actual: p.actual, demand: demandMw,
     band: p90 != null ? [Math.max(0, p.forecast - p90), p.forecast + p90] : null,
-  })), [data, p90]);
+  })), [data, p90, demandMw]);
 
   const s = data?.summary;
-  const demandMw = Number(demand);
-  const toBuy = demand && s ? Math.max(0, demandMw - s.mean_forecast) : null;
+  const toBuy = demandMw != null && s ? Math.max(0, demandMw - s.mean_forecast) : null;
 
   return (
     <>
+      <DayStrip days={meta.days} day={day} setDay={setDay} byDay={accuracy?.by_day} />
       <section className="rail">
-        <label>
-          Delivery day
-          <select value={day} onChange={(e) => setDay(e.target.value)}>
-            {meta.days.map((d) => <option key={d} value={d}>{longDay(d)}</option>)}
-          </select>
-        </label>
         <label>
           Your expected demand (MW, optional)
           <input type="number" min="0" placeholder="e.g. 18000" value={demand} onChange={(e) => setDemand(e.target.value)} />
         </label>
+        {data && <button className="tool" onClick={() => downloadCsv(data, day, cutoff)}>Download this day as CSV</button>}
       </section>
 
       {error && <p className="error">{error}</p>}
@@ -64,6 +92,7 @@ export default function DecisionView({ meta, cutoff, accuracy }) {
                 {p90 != null && <Area dataKey="band" name={`Forecast ± ${Math.round(p90).toLocaleString("en-GB")} MW`} stroke="none" fill="var(--band)" />}
                 <Line dataKey="forecast" name="Forecast at cutoff" stroke="var(--forecast)" strokeWidth={2.5} dot={false} />
                 <Line dataKey="actual" name="Actual outturn" stroke="var(--ink)" strokeWidth={1.5} strokeDasharray="4 3" dot={false} connectNulls={false} />
+                {demandMw != null && <Line dataKey="demand" name="Your demand" stroke="var(--err)" strokeWidth={1.5} dot={false} />}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -72,9 +101,10 @@ export default function DecisionView({ meta, cutoff, accuracy }) {
             <div><dt>Forecast lead time</dt><dd>{accuracy?.decision_horizon_h ? `${Math.round(accuracy.decision_horizon_h.min)}–${Math.round(accuracy.decision_horizon_h.max)} h ahead` : "–"}</dd></div>
             <div><dt>Forecast published</dt><dd>{clock(s.earliest_publish)}–{clock(s.latest_publish)} (UK)</dd></div>
             <div><dt>This day's average miss</dt><dd>{mw(s.day_metrics.mae)}</dd></div>
-            {toBuy != null && <div><dt>Buy beyond wind (average)</dt><dd>{mw(toBuy)}{p90 != null && ` (up to ${mw(toBuy + p90)} if wind under-delivers)`}</dd></div>}
+            {toBuy != null && <div><dt>Buy beyond wind (average)</dt><dd>{mw(toBuy)}</dd></div>}
+            {toBuy != null && accuracy && <div><dt>Suggested cover (19 in 20)</dt><dd>{mw(toBuy + over95)}</dd></div>}
           </dl>
-          {toBuy != null && <p className="muted small">Illustrative only: demand is your own input, and Elexon wind is the only data used here.</p>}
+          {toBuy != null && <p className="muted small">Illustrative only: demand is your own input. Cover adds the January 95th-percentile over-forecast ({mw(over95)}) to the average gap. Elexon wind is the only data used.</p>}
         </>
       )}
     </>

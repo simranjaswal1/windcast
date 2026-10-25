@@ -6,15 +6,21 @@ import AccuracyView from "./AccuracyView.jsx";
 export default function App() {
   const [meta, setMeta] = useState(null);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState("decision");
-  const [cutoff, setCutoff] = useState("09:00");
+  const [init] = useState(() => Object.fromEntries(new URLSearchParams(window.location.hash.slice(1))));
+  const [tab, setTab] = useState(init.tab === "accuracy" ? "accuracy" : "decision");
+  const [cutoff, setCutoff] = useState(/^\d\d:\d\d$/.test(init.cutoff ?? "") ? init.cutoff : "09:00");
+  const [day, setDay] = useState(init.day || "2026-01-15");
   const [accuracy, setAccuracy] = useState(null);
 
   useEffect(() => {
     getMeta()
-      .then((m) => { setMeta(m); setCutoff(m.default_cutoff); })
+      .then((m) => { setMeta(m); if (!init.cutoff) setCutoff(m.default_cutoff); if (!m.days.includes(day)) setDay("2026-01-15"); })
       .catch((e) => setError(e.message));
   }, []);
+
+  useEffect(() => {  // shareable link: #tab=...&day=...&cutoff=...
+    window.history.replaceState(null, "", `#${new URLSearchParams({ tab, day, cutoff })}`);
+  }, [tab, day, cutoff]);
 
   useEffect(() => {
     if (!meta) return;
@@ -52,7 +58,7 @@ export default function App() {
       </section>
 
       {tab === "decision"
-        ? <DecisionView meta={meta} cutoff={cutoff} accuracy={accuracy} />
+        ? <DecisionView meta={meta} cutoff={cutoff} accuracy={accuracy} day={day} setDay={setDay} />
         : <AccuracyView accuracy={accuracy} />}
     </main>
   );

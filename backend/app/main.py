@@ -104,6 +104,7 @@ def _accuracy(cutoff: str) -> dict:
         "by_day": an.grouped(dec, "day"),
         "by_hour": an.grouped(dec, "hour"),
         "by_horizon": an.horizon_table(fc, actuals),
+        "error_hist": an.error_histogram(dec),
     })
 
 
@@ -112,6 +113,27 @@ def accuracy(cutoff: str = Query(DEFAULT_CUTOFF)):
     """Error metrics for January 2026 using only the forecast available at the cutoff."""
     _cutoff(cutoff)
     return _accuracy(cutoff)
+
+
+SENSITIVITY_CUTOFFS = ["00:00", "03:00", "06:00", "08:00", "09:00", "09:30"]
+
+
+@lru_cache(maxsize=1)
+def _sensitivity() -> list:
+    actuals, fc, _ = data.load()
+    rows = []
+    for c in SENSITIVITY_CUTOFFS:
+        dec = an.join_actuals(an.decisions_for_days(fc, data.delivery_days(), an.parse_cutoff(c)), actuals)
+        if not dec.empty:
+            s = an.summarize(dec)
+            rows.append({"cutoff": c, "mae": s["mae"], "p90_abs": s["p90_abs"], "n": s["n"]})
+    return _clean(rows)
+
+
+@app.get("/api/sensitivity")
+def sensitivity():
+    """How accuracy changes if the buying decision is made earlier or later on D-1."""
+    return _sensitivity()
 
 
 STATIC = Path(__file__).resolve().parents[1] / "static"
