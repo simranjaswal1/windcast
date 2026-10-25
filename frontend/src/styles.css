@@ -65,3 +65,11 @@ figcaption { max-width: 70ch; line-height: 1.4; }
   .tiles { grid-template-columns: 1fr 1fr; gap: 8px; } .tiles dd { font-size: 1.1rem; }
   .rail > label { max-width: none; width: 100%; } .tool { width: 100%; }
 }
+.days button { line-height: 1.1; } .mon { display: block; font-size: 0.6rem; font-weight: 700; opacity: 0.8; }
+.tablewrap { overflow-x: auto; margin-top: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 560px; }
+th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 8px; border-bottom: 2px solid var(--line); }
+td { padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; } td .tool { min-height: 36px; }
+.over { color: var(--err); font-weight: 700; } .under { color: var(--forecast); font-weight: 700; }
+.pager { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin-top: 14px; font-size: 0.85rem; }
+.tool:disabled { opacity: 0.4; cursor: default; }

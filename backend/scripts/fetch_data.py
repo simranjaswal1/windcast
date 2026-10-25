@@ -14,9 +14,9 @@ def main() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     actuals = fetch_actuals(FIRST_DAY, LAST_DAY)
     fc = fetch_forecasts(datetime(2025, 12, 29, tzinfo=timezone.utc),
-                         datetime(2026, 2, 1, tzinfo=timezone.utc))
-    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    end = datetime(2026, 2, 1, tzinfo=timezone.utc)
+                         datetime(2026, 2, 3, tzinfo=timezone.utc))
+    start = datetime(2026, 1, 2, tzinfo=timezone.utc)
+    end = datetime(2026, 2, 2, tzinfo=timezone.utc)
     fc = fc[(fc["startTime"] >= start) & (fc["startTime"] < end)]
     actuals.to_csv(DATA_DIR / "actuals.csv", index=False)
     fc.to_csv(DATA_DIR / "forecasts.csv", index=False)

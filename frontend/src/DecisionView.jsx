@@ -3,6 +3,8 @@ import { ComposedChart, Line, Area, XAxis, YAxis, Tooltip, CartesianGrid, Respon
 import { getDecision } from "./api.js";
 import { mw, clock, stamp, longDay } from "./format.js";
 
+const MONTHS = ["Jan", "Feb"];
+
 function DayStrip({ days, day, setDay, byDay }) {
   const mae = Object.fromEntries((byDay ?? []).map((r) => [r.day, r.mae]));
   const max = Math.max(1, ...Object.values(mae));
@@ -19,7 +21,7 @@ function DayStrip({ days, day, setDay, byDay }) {
           <button key={d} aria-pressed={d === day} onClick={() => setDay(d)}
             title={`${longDay(d)}${mae[d] != null ? ` · average miss ${mw(mae[d])}` : ""}`}
             style={mae[d] != null ? { background: `color-mix(in srgb, var(--warn) ${Math.round(15 + 70 * mae[d] / max)}%, transparent)` } : undefined}>
-            {Number(d.slice(8))}
+            {Number(d.slice(8))}{(d === days[0] || d.endsWith("-01")) && <small className="mon">{MONTHS[Number(d.slice(5, 7)) - 1]}</small>}
           </button>
         ))}
       </div>
@@ -43,8 +45,10 @@ export default function DecisionView({ meta, cutoff, accuracy, day, setDay }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setData(null); setError("");
-    getDecision(day, cutoff).then(setData).catch((e) => setError(e.message));
+    let live = true;  // ignore answers that arrive after a newer request
+    setError("");
+    getDecision(day, cutoff).then((d) => live && setData(d)).catch((e) => { if (live) { setError(e.message); setData(null); } });
+    return () => { live = false; };
   }, [day, cutoff]);
 
   const p90 = accuracy?.summary?.p90_abs;

@@ -1,7 +1,13 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { getMeta, getAccuracy } from "./api.js";
 import DecisionView from "./DecisionView.jsx";
-import AccuracyView from "./AccuracyView.jsx";
+const AccuracyView = lazy(() => import("./AccuracyView.jsx"));  // charts + table load only when opened
+
+function useDebounced(value, ms) {
+  const [v, setV] = useState(value);
+  useEffect(() => { const t = setTimeout(() => setV(value), ms); return () => clearTimeout(t); }, [value, ms]);
+  return v;
+}
 
 const TABS = [["decision", "Decision time", "What to expect for a delivery day"], ["accuracy", "Accuracy", "How wrong forecasts have been"]];
 
@@ -13,6 +19,7 @@ export default function App() {
   const [cutoff, setCutoff] = useState(/^\d\d:\d\d$/.test(init.cutoff ?? "") ? init.cutoff : "09:00");
   const [day, setDay] = useState(init.day || "2026-01-15");
   const [accuracy, setAccuracy] = useState(null);
+  const dCutoff = useDebounced(cutoff, 350);  // wait for the person to finish typing a time
 
   useEffect(() => {
     getMeta()
@@ -26,9 +33,10 @@ export default function App() {
 
   useEffect(() => {
     if (!meta) return;
-    setAccuracy(null);
-    getAccuracy(cutoff).then(setAccuracy).catch((e) => setError(e.message));
-  }, [meta, cutoff]);
+    let live = true;  // ignore answers that arrive after a newer request
+    getAccuracy(dCutoff).then((a) => live && setAccuracy(a)).catch((e) => live && setError(e.message));
+    return () => { live = false; };
+  }, [meta, dCutoff]);
 
   if (error) return <main className="solo"><p className="error">{error}</p></main>;
   if (!meta) return <main className="solo"><p className="muted">Loading data…</p></main>;
@@ -38,7 +46,7 @@ export default function App() {
       <aside className="side">
         <div>
           <h1 className="brand">Windcast</h1>
-          <p className="tag">GB wind forecasts for day-ahead buying · January 2026</p>
+          <p className="tag">GB wind forecasts for day-ahead buying · decisions made in January 2026</p>
         </div>
         <nav aria-label="Sections">
           {TABS.map(([id, label, hint]) => (
@@ -59,8 +67,8 @@ export default function App() {
       <main>
         {meta.source === "synthetic" && <p className="banner">Showing synthetic demo data, not Elexon data.</p>}
         {tab === "decision"
-          ? <DecisionView meta={meta} cutoff={cutoff} accuracy={accuracy} day={day} setDay={setDay} />
-          : <AccuracyView accuracy={accuracy} />}
+          ? <DecisionView meta={meta} cutoff={dCutoff} accuracy={accuracy} day={day} setDay={setDay} />
+          : <Suspense fallback={<p className="muted">Loading…</p>}><AccuracyView accuracy={accuracy} onOpenDay={(d) => { setDay(d); setTab("decision"); }} /></Suspense>}
       </main>
     </div>
   );

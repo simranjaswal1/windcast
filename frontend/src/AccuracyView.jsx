@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getSensitivity } from "./api.js";
+import ErrorTable from "./ErrorTable.jsx";
 import { BarChart, Bar, Cell, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
 import { mw, num, dayLabel } from "./format.js";
 
@@ -14,7 +15,7 @@ function Chart({ title, note, children }) {
 
 const k = (v) => `${(v / 1000).toFixed(1)}k`;
 
-export default function AccuracyView({ accuracy }) {
+export default function AccuracyView({ accuracy, onOpenDay }) {
   const [sens, setSens] = useState(null);
   useEffect(() => { getSensitivity().then(setSens).catch(() => setSens([])); }, []);
   if (!accuracy) return <p className="muted">Calculating…</p>;
@@ -78,6 +79,8 @@ export default function AccuracyView({ accuracy }) {
           <Bar dataKey="count" name="Half-hours">{accuracy.error_hist.map((b) => <Cell key={b.lo} fill={b.lo >= 0 ? "var(--warn)" : "var(--forecast)"} />)}</Bar>
         </BarChart>
       </Chart>
+
+      <ErrorTable cutoff={accuracy.cutoff} onOpenDay={onOpenDay} />
 
       <details className="card gloss"><summary>What do these terms mean?</summary>
         <p><b>Average miss (MAE):</b> how many MW the forecast was off by, on average.</p>

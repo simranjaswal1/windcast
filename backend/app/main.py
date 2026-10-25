@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi import Request
 from fastapi.staticfiles import StaticFiles
 
 from . import analysis as an
@@ -18,6 +20,16 @@ DEFAULT_CUTOFF = "09:00"  # UK time on D-1; day-ahead gate closure is ~09:20-09:
 
 app = FastAPI(title="Windcast API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"])
+app.add_middleware(GZipMiddleware, minimum_size=500)  # JSON compresses ~5-10x
+
+
+@app.middleware("http")
+async def cache_api(request: Request, call_next):
+    """The data is a fixed snapshot, so API answers can be cached by the browser for a few minutes."""
+    resp = await call_next(request)
+    if request.url.path.startswith("/api/") and request.url.path != "/api/health":
+        resp.headers["Cache-Control"] = "public, max-age=300"
+    return resp
 
 
 def _clean(obj):
@@ -134,6 +146,32 @@ def _sensitivity() -> list:
 def sensitivity():
     """How accuracy changes if the buying decision is made earlier or later on D-1."""
     return _sensitivity()
+
+
+SORTS = {"biggest": ("abs_error", False), "over": ("error", False), "under": ("error", True), "time": ("startTime", True)}
+
+
+@lru_cache(maxsize=16)
+def _error_rows(cutoff: str) -> pd.DataFrame:
+    actuals, fc, _ = data.load()
+    dec = an.join_actuals(an.decisions_for_days(fc, data.delivery_days(), an.parse_cutoff(cutoff)), actuals)
+    dec = dec.assign(abs_error=dec["error"].abs(),
+                     day=dec["startTime"].dt.tz_convert("Europe/London").dt.strftime("%Y-%m-%d"))
+    return dec[["startTime", "day", "forecast", "actual", "error", "abs_error", "horizon_h"]].reset_index(drop=True)
+
+
+@app.get("/api/errors")
+def errors(cutoff: str = Query(DEFAULT_CUTOFF), page: int = Query(1, ge=1),
+           page_size: int = Query(25, ge=5, le=100), sort: str = Query("biggest")):
+    """Every half-hour's forecast error for the chosen cutoff, sorted and paginated on the server."""
+    _cutoff(cutoff)
+    if sort not in SORTS:
+        raise HTTPException(422, f"sort must be one of {sorted(SORTS)}")
+    col, asc = SORTS[sort]
+    df = _error_rows(cutoff).sort_values(col, ascending=asc, kind="stable")
+    total, start = len(df), (page - 1) * page_size
+    return _clean({"total": total, "page": page, "page_size": page_size,
+                   "pages": max(1, -(-total // page_size)), "rows": df.iloc[start:start + page_size].to_dict("records")})
 
 
 STATIC = Path(__file__).resolve().parents[1] / "static"

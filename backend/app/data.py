@@ -10,11 +10,22 @@ from pathlib import Path
 import pandas as pd
 
 DATA_DIR = Path(os.getenv("WINDCAST_DATA_DIR", Path(__file__).resolve().parents[1] / "data"))
-FIRST_DAY, LAST_DAY = date(2026, 1, 1), date(2026, 1, 31)
+# Delivery days whose D-1 buying decision is made in January 2026: 2 Jan .. 1 Feb.
+FIRST_DAY, LAST_DAY = date(2026, 1, 2), date(2026, 2, 1)
+
+
+@lru_cache(maxsize=1)
+def _days_with_actuals():
+    try:
+        return frozenset(load()[0]["startTime"].dt.date)
+    except RuntimeError:  # snapshot missing: report the full window, load() raises a clear error elsewhere
+        return None
 
 
 def delivery_days() -> list[date]:
-    return [FIRST_DAY + timedelta(days=i) for i in range((LAST_DAY - FIRST_DAY).days + 1)]
+    days = [FIRST_DAY + timedelta(days=i) for i in range((LAST_DAY - FIRST_DAY).days + 1)]
+    have = _days_with_actuals()
+    return days if have is None else [d for d in days if d in have]
 
 
 @lru_cache(maxsize=1)
