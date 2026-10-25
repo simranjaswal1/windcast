@@ -1,0 +1,35 @@
+name: Fetch Elexon data
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+      - name: Fetch real data
+        working-directory: backend
+        run: python -m scripts.fetch_data
+      - name: Show row counts and run tests
+        working-directory: backend
+        run: |
+          wc -l data/actuals.csv data/forecasts.csv
+          cat data/meta.json
+          python -m pytest -q
+      - name: Commit data
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add backend/data
+          git commit -m "Add Jan 2026 Elexon snapshot" || echo "No changes"
+          git push
